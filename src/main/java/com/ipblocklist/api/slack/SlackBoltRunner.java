@@ -2,7 +2,10 @@ package com.ipblocklist.api.slack;
 
 import org.springframework.stereotype.Component;
 
+import com.ipblocklist.api.slack.config.SlackProps;
 import com.ipblocklist.api.slack.service.ChannelAccessService;
+import com.ipblocklist.api.slack.service.IpCommandService;
+import com.ipblocklist.api.slack.util.IpCommandParser;
 import com.slack.api.bolt.App;
 import com.slack.api.bolt.AppConfig;
 import com.slack.api.bolt.socket_mode.SocketModeApp;

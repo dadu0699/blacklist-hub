@@ -1,4 +1,4 @@
-package com.ipblocklist.api.slack;
+package com.ipblocklist.api.slack.service;
 
 import java.time.LocalDateTime;
 
@@ -6,8 +6,8 @@ import org.springframework.stereotype.Service;
 
 import com.ipblocklist.api.entity.IpEntity;
 import com.ipblocklist.api.repository.IpRepository;
-import com.ipblocklist.api.slack.IpCommandParser.Parsed;
 import com.ipblocklist.api.slack.util.AuditHelper;
+import com.ipblocklist.api.slack.util.IpCommandParser.Parsed;
 import com.ipblocklist.api.slack.util.IpUtils;
 
 import lombok.RequiredArgsConstructor;

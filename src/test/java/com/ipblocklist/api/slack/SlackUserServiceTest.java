@@ -1,22 +1,25 @@
 package com.ipblocklist.api.slack;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
+import java.time.LocalDateTime;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+
 import com.ipblocklist.api.entity.SlackUserEntity;
 import com.ipblocklist.api.repository.SlackUserRepository;
+import com.ipblocklist.api.slack.service.SlackUserService;
 import com.slack.api.methods.MethodsClient;
 import com.slack.api.methods.request.users.UsersInfoRequest;
 import com.slack.api.methods.response.users.UsersInfoResponse;
 import com.slack.api.model.User;
 import com.slack.api.model.User.Profile;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
-
-import java.time.LocalDateTime;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
 
 class SlackUserServiceTest {
 

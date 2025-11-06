@@ -1,4 +1,4 @@
-package com.ipblocklist.api.slack;
+package com.ipblocklist.api.slack.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;

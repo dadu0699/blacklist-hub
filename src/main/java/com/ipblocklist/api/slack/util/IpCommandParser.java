@@ -1,4 +1,4 @@
-package com.ipblocklist.api.slack;
+package com.ipblocklist.api.slack.util;
 
 import java.util.List;
 

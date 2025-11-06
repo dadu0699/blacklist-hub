@@ -1,4 +1,4 @@
-package com.ipblocklist.api.slack;
+package com.ipblocklist.api.slack.service;
 
 import java.time.LocalDateTime;
 import java.util.Objects;

@@ -1,4 +1,4 @@
-package com.ipblocklist.api.slack;
+package com.ipblocklist.api.slack.service;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;

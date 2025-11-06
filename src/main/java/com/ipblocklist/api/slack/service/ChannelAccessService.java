@@ -26,7 +26,6 @@ public class ChannelAccessService {
      * Combines DB whitelist and optional static list from application.yml.
      */
     public Mono<Boolean> isChannelAllowed(String channelId) {
-        log.debug("staticWhitelist={}", staticWhitelist);
         log.debug("Checking channel access for {}", channelId);
 
         return repo.existsByChannelIdAndActiveTrue(channelId)

@@ -43,3 +43,6 @@ slack:
   app-token: xapp-1-A09RDLGJGTW-9858094402182-03f682a7a6d09cd759ea2bc8aca11ebc06efcf2eff81debbf1eb593027f03ff0
   bot-token: xoxb-8365069165494-9844696580103-iSW1Vx2JK5xzOlnAiLL6J4JT
   signing-secret: ''
+
+app:
+  allowed-channels: C08AXL1SYBC

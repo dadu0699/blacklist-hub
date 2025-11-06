@@ -2,18 +2,17 @@ package com.ipblocklist.api.slack;
 
 import org.springframework.stereotype.Component;
 
-import com.ipblocklist.api.slack.IpCommandParser.Parsed;
+import com.ipblocklist.api.slack.service.ChannelAccessService;
 import com.slack.api.bolt.App;
 import com.slack.api.bolt.AppConfig;
 import com.slack.api.bolt.socket_mode.SocketModeApp;
-import com.slack.api.socket_mode.SocketModeClient;
-import com.slack.api.webhook.WebhookResponse;
+import com.slack.api.methods.MethodsClient;
+import com.slack.api.model.event.AppMentionEvent;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import reactor.core.publisher.Mono;
 
 @Slf4j
 @Component
@@ -21,107 +20,107 @@ import reactor.core.publisher.Mono;
 public class SlackBoltRunner {
 
     private final SlackProps props;
-    private final IpCommandService ipService;
+    private final IpCommandService ipCommandService;
+    private final MethodsClient slackClient;
+    private final ChannelAccessService channelAccessService;
 
     private SocketModeApp socketModeApp;
 
     @PostConstruct
     public void start() throws Exception {
-        // Build a proper AppConfig for Bolt
+        // Bolt app config (bot token for Web API, optional signing secret)
         AppConfig config = AppConfig.builder()
                 .singleTeamBotToken(props.botToken())
-                // signingSecret is optional if you only use Socket Mode (no public Events API)
                 .signingSecret(props.signingSecret() == null ? "" : props.signingSecret())
                 .build();
 
         App app = new App(config);
 
-        // /ip command
         app.command("/ip", (req, ctx) -> {
+            final String text = req.getPayload().getText();
+            final String channelId = req.getPayload().getChannelId();
             final String userId = req.getPayload().getUserId();
             final String teamId = req.getPayload().getTeamId();
-            final String text = req.getPayload().getText();
 
-            // Ack quickly to avoid Slack timeout
+            log.info("Received /ip '{}' from user={} in channel={}", text, userId, channelId);
+
+            // Ack immediately (avoid Slack 3s timeout)
             ctx.ack(":hourglass_flowing_sand: processing…");
 
-            Parsed p = IpCommandParser.parse(text);
-            switch (p.sub()) {
-                case "add" -> {
-                    final String ip = p.args().isEmpty() ? "" : p.args().get(0);
-                    final String reason = p.tail().isBlank() ? null : p.tail();
-                    asyncRespond(ctx, ipService.addIp(userId, teamId, ip, reason));
-                }
-                case "deactivate" -> {
-                    final String ip = p.args().isEmpty() ? "" : p.args().get(0);
-                    final String reason = p.tail().isBlank() ? null : p.tail();
-                    asyncRespond(ctx, ipService.deactivateIp(userId, teamId, ip, reason));
-                }
-                case "reactivate" -> {
-                    final String ip = p.args().isEmpty() ? "" : p.args().get(0);
-                    final String reason = p.tail().isBlank() ? null : p.tail();
-                    asyncRespond(ctx, ipService.reactivateIp(userId, teamId, ip, reason));
-                }
-                case "edit" -> {
-                    final String ip = p.args().isEmpty() ? "" : p.args().get(0);
-                    final String newReason = p.tail().isBlank() ? null : p.tail();
-                    asyncRespond(ctx, ipService.editIp(userId, teamId, ip, newReason));
-                }
-                case "list" -> {
-                    // Default: only active, limit 200
-                    asyncRespond(ctx, ipService.listIps(true, 200));
-                }
-                case "" -> {
-                    // No subcommand provided
-                    ctx.respond("""
-                            Usage:
-                            • /ip add <IP> [reason]
-                            • /ip deactivate <IP> [reason]
-                            • /ip reactivate <IP> [reason]
-                            • /ip edit <IP> <new reason>
-                            • /ip list
-                            """);
-                }
-                default -> {
-                    ctx.respond(":warning: Unknown subcommand: `" + p.sub() + "`\n" +
-                            "Try `/ip list` or see `/ip` usage.");
-                }
-            }
+            // Check whitelist asynchronously
+            channelAccessService.isChannelAllowed(channelId).subscribe(
+                    allowed -> {
+                        if (!allowed) {
+                            try {
+                                ctx.respond(r -> r
+                                        .responseType("ephemeral")
+                                        .text(":no_entry_sign: Commands are not allowed in this channel."));
+                            } catch (Exception e) {
+                                log.error("Failed to respond unauthorized channel", e);
+                            }
+                            return;
+                        }
 
-            // Return an empty ack since we've already acknowledged/responded
+                        // Parse and execute via service
+                        var parsed = IpCommandParser.parse(text);
+
+                        ipCommandService.execute(parsed, userId, teamId, channelId).subscribe(
+                                resultMessage -> {
+                                    try {
+                                        // Visible audit message to the same channel
+                                        String auditMsg = String.format(
+                                                ":memo: <@%s> executed `/ip %s` in <#%s>",
+                                                userId, parsed.sub(), channelId);
+                                        slackClient.chatPostMessage(r -> r.channel(channelId).text(auditMsg));
+
+                                        // Public (in_channel) response with pretty formatting
+                                        String publicMsg = prettyResultForChannel(userId, resultMessage);
+                                        ctx.respond(r -> r
+                                                .responseType("in_channel")
+                                                .text(publicMsg));
+                                    } catch (Exception e) {
+                                        log.error("Failed to post Slack responses", e);
+                                        try {
+                                            ctx.respond(":x: Failed to post response: " + e.getMessage());
+                                        } catch (Exception ignore) {
+                                            /* swallow */
+                                        }
+                                    }
+                                },
+                                err -> {
+                                    log.error("Error executing /ip command", err);
+                                    try {
+                                        ctx.respond(":x: Internal error executing command: " + err.getMessage());
+                                    } catch (Exception ignore) {
+                                        /* swallow */
+                                    }
+                                });
+                    },
+                    err -> {
+                        log.error("Error checking channel whitelist", err);
+                        try {
+                            ctx.respond(":x: Error checking channel whitelist: " + err.getMessage());
+                        } catch (Exception ignore) {
+                            /* swallow */ }
+                    });
+
+            // We already acked above
             return ctx.ack();
         });
 
-        // Start Socket Mode with xapp token
+        // Optional: respond to @mentions for a quick health check
+        app.event(AppMentionEvent.class, (payload, ctx) -> {
+            String channelId = payload.getEvent().getChannel();
+            log.info("App mentioned in channel {}", channelId);
+            ctx.say("👋 I'm alive and managing the IP blocklist commands.");
+            return ctx.ack();
+        });
+
+        // Start Socket Mode using the app-level token (xapp-***)
         socketModeApp = new SocketModeApp(props.appToken(), app);
         socketModeApp.startAsync();
 
-        SocketModeClient client = socketModeApp.getClient();
-        log.info("Slack Socket Mode connected: {}", client != null);
-    }
-
-    private void asyncRespond(com.slack.api.bolt.context.builtin.SlashCommandContext ctx, Mono<String> mono) {
-        mono.subscribe(
-                msg -> {
-                    try {
-                        // respond() posts via response_url and returns WebhookResponse
-                        WebhookResponse r = ctx.respond(msg);
-                        if (r == null || r.getCode() >= 400) {
-                            log.warn("Slack respond returned non-OK: code={} body={}",
-                                    r == null ? -1 : r.getCode(),
-                                    r == null ? "<null>" : r.getBody());
-                        }
-                    } catch (Exception e) {
-                        log.error("Error sending Slack response", e);
-                    }
-                },
-                err -> {
-                    try {
-                        ctx.respond(":x: Error: " + err.getMessage());
-                    } catch (Exception e) {
-                        log.error("Error sending failure to Slack", e);
-                    }
-                });
+        log.info("✅ Slack Bolt runner started successfully in Socket Mode.");
     }
 
     @PreDestroy
@@ -133,5 +132,34 @@ public class SlackBoltRunner {
                 log.warn("Error closing SocketModeApp", e);
             }
         }
+    }
+
+    private static String prettyResultForChannel(String userId, String raw) {
+        if (raw == null)
+            raw = "";
+        String msg = raw.trim();
+
+        String emoji = "";
+        String rest = msg;
+
+        final String OK = ":white_check_mark:";
+        final String ERR = ":x:";
+        final String WARN = ":warning:";
+
+        if (msg.startsWith(OK)) {
+            emoji = OK;
+            rest = msg.substring(OK.length()).trim();
+        } else if (msg.startsWith(ERR)) {
+            emoji = ERR;
+            rest = msg.substring(ERR.length()).trim();
+        } else if (msg.startsWith(WARN)) {
+            emoji = WARN;
+            rest = msg.substring(WARN.length()).trim();
+        } else {
+
+            emoji = OK;
+        }
+
+        return String.format("%s <@%s> %s", emoji, userId, rest);
     }
 }

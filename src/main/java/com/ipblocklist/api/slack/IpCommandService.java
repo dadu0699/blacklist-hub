@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import com.ipblocklist.api.entity.IpEntity;
 import com.ipblocklist.api.repository.IpRepository;
+import com.ipblocklist.api.slack.IpCommandParser.Parsed;
 import com.ipblocklist.api.slack.util.AuditHelper;
 import com.ipblocklist.api.slack.util.IpUtils;
 
@@ -22,6 +23,54 @@ public class IpCommandService {
     private final IpRepository ipRepository;
     private final AuditHelper auditHelper;
     private final SlackUserService slackUserService;
+
+    public Mono<String> execute(Parsed p, String slackUserId, String teamId, String channelId) {
+        final String sub = p.sub() == null ? "" : p.sub();
+        switch (sub) {
+            case "add" -> {
+                final String ip = firstArg(p);
+                final String reason = tailOrNull(p);
+                log.info("CMD add ip={} by user={} in channel={}", ip, slackUserId, channelId);
+                return addIp(slackUserId, teamId, ip, reason);
+            }
+            case "deactivate" -> {
+                final String ip = firstArg(p);
+                final String reason = tailOrNull(p);
+                log.info("CMD deactivate ip={} by user={} in channel={}", ip, slackUserId, channelId);
+                return deactivateIp(slackUserId, teamId, ip, reason);
+            }
+            case "reactivate" -> {
+                final String ip = firstArg(p);
+                final String reason = tailOrNull(p);
+                log.info("CMD reactivate ip={} by user={} in channel={}", ip, slackUserId, channelId);
+                return reactivateIp(slackUserId, teamId, ip, reason);
+            }
+            case "edit" -> {
+                final String ip = firstArg(p);
+                final String newReason = tailOrNull(p);
+                log.info("CMD edit ip={} by user={} in channel={}", ip, slackUserId, channelId);
+                return editIp(slackUserId, teamId, ip, newReason);
+            }
+            case "list" -> {
+                log.info("CMD list by user={} in channel={}", slackUserId, channelId);
+                return listIps(true, 200);
+            }
+            case "" -> {
+                return Mono.just("""
+                        Usage:
+                        • /ip add <IP> [reason]
+                        • /ip deactivate <IP> [reason]
+                        • /ip reactivate <IP> [reason]
+                        • /ip edit <IP> <new reason>
+                        • /ip list
+                        """);
+            }
+            default -> {
+                return Mono.just(":warning: Unknown subcommand: `" + sub + "`\n" +
+                        "Try `/ip list` or see `/ip` usage.");
+            }
+        }
+    }
 
     public Mono<String> addIp(String slackUserId, String teamId, String ip, String reason) {
         if (!IpUtils.isValidIp(ip))
@@ -58,7 +107,7 @@ public class IpCommandService {
                                                         IpUtils.jsonKV("active", "1", false)) + "}"))
                                         .thenReturn(":white_check_mark: Added `" + ip + "`")))
                 .onErrorResume(e -> {
-                    log.error("Failed to add IP {}: {}", ip, e.getMessage());
+                    log.error("Failed to add IP {} by {}: {}", ip, slackUserId, e.getMessage(), e);
                     return Mono.just(":x: Error while adding `" + ip + "`: " + e.getMessage());
                 });
     }
@@ -89,7 +138,11 @@ public class IpCommandService {
                                     .flatMap(saved -> auditHelper.log("DEACTIVATE", user.getId(), saved, prev, next))
                                     .thenReturn(":white_check_mark: Deactivated `" + ip + "`");
                         })
-                        .switchIfEmpty(Mono.just(":warning: IP not found: `" + ip + "`")));
+                        .switchIfEmpty(Mono.just(":warning: IP not found: `" + ip + "`")))
+                .onErrorResume(e -> {
+                    log.error("Failed to deactivate IP {} by {}: {}", ip, slackUserId, e.getMessage(), e);
+                    return Mono.just(":x: Error while deactivating `" + ip + "`: " + e.getMessage());
+                });
     }
 
     public Mono<String> reactivateIp(String slackUserId, String teamId, String ip, String reason) {
@@ -118,7 +171,11 @@ public class IpCommandService {
                                     .flatMap(saved -> auditHelper.log("REACTIVATE", user.getId(), saved, prev, next))
                                     .thenReturn(":white_check_mark: Reactivated `" + ip + "`");
                         })
-                        .switchIfEmpty(Mono.just(":warning: IP not found: `" + ip + "`")));
+                        .switchIfEmpty(Mono.just(":warning: IP not found: `" + ip + "`")))
+                .onErrorResume(e -> {
+                    log.error("Failed to reactivate IP {} by {}: {}", ip, slackUserId, e.getMessage(), e);
+                    return Mono.just(":x: Error while reactivating `" + ip + "`: " + e.getMessage());
+                });
     }
 
     public Mono<String> editIp(String slackUserId, String teamId, String ip, String newReason) {
@@ -136,7 +193,11 @@ public class IpCommandService {
                                     .flatMap(saved -> auditHelper.log("UPDATE", user.getId(), saved, prev, next))
                                     .thenReturn(":white_check_mark: Updated `" + ip + "` reason");
                         })
-                        .switchIfEmpty(Mono.just(":warning: IP not found: `" + ip + "`")));
+                        .switchIfEmpty(Mono.just(":warning: IP not found: `" + ip + "`")))
+                .onErrorResume(e -> {
+                    log.error("Failed to edit IP {} by {}: {}", ip, slackUserId, e.getMessage(), e);
+                    return Mono.just(":x: Error while editing `" + ip + "`: " + e.getMessage());
+                });
     }
 
     public Mono<String> listIps(boolean onlyActive, int limit) {
@@ -146,6 +207,18 @@ public class IpCommandService {
                 .collectList()
                 .map(list -> list.isEmpty()
                         ? "_(no IPs found)_"
-                        : "```\n" + String.join("\n", list) + "\n```");
+                        : "```\n" + String.join("\n", list) + "\n```")
+                .onErrorResume(e -> {
+                    log.error("Error listing IPs: {}", e.getMessage(), e);
+                    return Mono.just(":x: Error retrieving list: " + e.getMessage());
+                });
+    }
+
+    private static String firstArg(Parsed p) {
+        return (p.args() == null || p.args().isEmpty()) ? "" : p.args().get(0);
+    }
+
+    private static String tailOrNull(Parsed p) {
+        return (p.tail() == null || p.tail().isBlank()) ? null : p.tail();
     }
 }

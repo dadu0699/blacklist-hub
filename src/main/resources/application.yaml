@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: ip-blocklist-api
+
+  # R2DBC configuration (for runtime)
+  r2dbc:
+    url: r2dbc:mysql://localhost:3306/ip_blocklist
+    username: root
+    password: root
+    pool:
+      initial-size: 5
+      max-size: 20
+      max-idle-time: 30s
+
+  # Flyway (migrations)
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    url: jdbc:mysql://localhost:3306/ip_blocklist
+    user: root
+    password: root
+    baseline-on-migrate: true
+
+  # Logging configuration
+  logging:
+    level:
+      root: INFO
+      org.springframework.r2dbc: WARN
+      com.ipblocklist: DEBUG
+
+  # Actuator (for healthcheck, info, etc.)
+  management:
+    endpoints:
+      web:
+        exposure:
+          include: health, info, metrics
+    endpoint:
+      health:
+        show-details: when_authorized
+
+# Slack configuration
+slack:
+  app-token: xapp-1-A09RDLGJGTW-9858094402182-03f682a7a6d09cd759ea2bc8aca11ebc06efcf2eff81debbf1eb593027f03ff0
+  bot-token: xoxb-8365069165494-9844696580103-iSW1Vx2JK5xzOlnAiLL6J4JT
+  signing-secret: ''

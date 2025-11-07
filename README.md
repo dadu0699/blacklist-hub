@@ -57,6 +57,19 @@ spring:
   - `commands`, `chat:write`, `users:read`, `app_mentions:read`
 - **Socket Mode** habilitado en Slack.
 
+## Preparación de la base de datos
+
+Antes de iniciar la aplicación (ya sea localmente o en Docker), **debes crear manualmente la base de datos vacía** donde se aplicarán las migraciones de Flyway.
+
+Por ejemplo, desde MySQL:
+
+```bash
+mysql -u root -p
+CREATE DATABASE ip_blocklist CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+```
+
+Una vez creada, Flyway se encargará de aplicar automáticamente todas las migraciones en el arranque.
+
 ## Ejecución en desarrollo
 
 ```bash

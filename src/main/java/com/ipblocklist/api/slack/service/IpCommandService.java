@@ -4,6 +4,10 @@ import static com.ipblocklist.api.slack.util.CommandTextUtils.firstArg;
 import static com.ipblocklist.api.slack.util.CommandTextUtils.tailOrNull;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
@@ -15,6 +19,7 @@ import com.ipblocklist.api.slack.util.IpUtils;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Slf4j
@@ -57,6 +62,13 @@ public class IpCommandService {
             case "list" -> {
                 log.info("CMD list by user={} in channel={}", slackUserId, channelId);
                 return listIps(true, 200);
+            }
+            case "bulk" -> {
+                final String csv = firstArg(p);
+                final List<String> ips = parseCsvIps(csv);
+                final String reason = tailOrNull(p);
+                log.info("CMD bulk add {} ips by user={} in channel={}", ips.size(), slackUserId, channelId);
+                return bulkAdd(slackUserId, teamId, ips, reason);
             }
             case "" -> {
                 return Mono.just("""
@@ -214,6 +226,113 @@ public class IpCommandService {
                 .onErrorResume(e -> {
                     log.error("Error listing IPs: {}", e.getMessage(), e);
                     return Mono.just(":x: Error retrieving list: " + e.getMessage());
+                });
+    }
+
+    private static List<String> parseCsvIps(String csv) {
+        if (csv == null || csv.isBlank())
+            return List.of();
+        return Arrays.stream(csv.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    public Mono<String> bulkAdd(String slackUserId, String teamId, List<String> ips, String reason) {
+        if (ips == null || ips.isEmpty()) {
+            return Mono.just(":warning: No IPs provided for bulk operation.");
+        }
+
+        final int maxBatch = 500;
+        if (ips.size() > maxBatch) {
+            return Mono.just(":warning: Bulk limit exceeded. Max " + maxBatch + " IPs allowed per bulk.");
+        }
+
+        return slackUserService.ensureAndEnrichSlackUser(slackUserId, teamId)
+                .flatMapMany(user -> {
+
+                    AtomicInteger added = new AtomicInteger(0);
+                    AtomicInteger reactivated = new AtomicInteger(0);
+                    AtomicInteger alreadyActive = new AtomicInteger(0);
+                    AtomicInteger invalid = new AtomicInteger(0);
+                    AtomicInteger errors = new AtomicInteger(0);
+
+                    return Flux.fromIterable(ips)
+                            .flatMap(ip -> {
+                                if (!IpUtils.isValidIp(ip)) {
+                                    invalid.incrementAndGet();
+                                    return Mono.just(String.format(":warning: Invalid `%s`", ip));
+                                }
+
+                                return ipRepository.findByIp(ip)
+                                        .flatMap(found -> {
+                                            if (Boolean.TRUE.equals(found.getActive())) {
+                                                alreadyActive.incrementAndGet();
+                                                return Mono.just(
+                                                        String.format(":information_source: Already active `%s`", ip));
+                                            }
+
+                                            found.setActive(true);
+                                            found.setReason(reason);
+                                            found.setUpdatedAt(LocalDateTime.now());
+                                            found.setDeactivatedBy(null);
+                                            found.setDeactivatedAt(null);
+
+                                            return ipRepository.save(found)
+                                                    .flatMap(saved -> auditHelper.log("REACTIVATE", user.getId(), saved,
+                                                            "{\"active\":0}", "{\"active\":1}"))
+                                                    .then(Mono.fromCallable(() -> {
+                                                        reactivated.incrementAndGet();
+                                                        return String.format(":white_check_mark: Reactivated `%s`", ip);
+                                                    }));
+                                        })
+                                        .switchIfEmpty(
+                                                ipRepository.save(IpEntity.builder()
+                                                        .ip(ip)
+                                                        .reason(reason)
+                                                        .active(true)
+                                                        .createdBy(user.getId())
+                                                        .createdAt(LocalDateTime.now())
+                                                        .build())
+                                                        .flatMap(saved -> auditHelper.log("CREATE", user.getId(), saved,
+                                                                null,
+                                                                "{" + String.join(",",
+                                                                        IpUtils.jsonKV("ip", ip, true),
+                                                                        IpUtils.jsonKV("reason", reason, true),
+                                                                        IpUtils.jsonKV("active", "1", false)) + "}"))
+                                                        .then(Mono.fromCallable(() -> {
+                                                            added.incrementAndGet();
+                                                            return String.format(":white_check_mark: Added `%s`", ip);
+                                                        })))
+                                        .onErrorResume(e -> {
+                                            errors.incrementAndGet();
+                                            log.error("Error handling ip {} in bulk: {}", ip, e.getMessage(), e);
+                                            return Mono.just(String.format(":x: Error `%s`: %s", ip, e.getMessage()));
+                                        });
+                            }, /* concurrency */ 10)
+                            .collectList()
+                            .map(individualResults -> {
+                                // build summary message
+                                StringBuilder sb = new StringBuilder();
+                                sb.append("*Bulk result overview*\n");
+                                sb.append(String.format("• Total requested: %d\n", ips.size()));
+                                sb.append(String.format("• Added: %d\n", added.get()));
+                                sb.append(String.format("• Reactivated: %d\n", reactivated.get()));
+                                sb.append(String.format("• Already active: %d\n", alreadyActive.get()));
+                                sb.append(String.format("• Invalid: %d\n", invalid.get()));
+                                sb.append(String.format("• Errors: %d\n\n", errors.get()));
+
+                                sb.append("*Details:*\n");
+                                individualResults.forEach(line -> sb.append("• ").append(line).append("\n"));
+
+                                return sb.toString();
+                            });
+                })
+                .singleOrEmpty()
+                .onErrorResume(e -> {
+                    log.error("bulkAdd failed for user {}: {}", slackUserId, e.getMessage(), e);
+                    return Mono.just(":x: Bulk operation failed: " + e.getMessage());
                 });
     }
 

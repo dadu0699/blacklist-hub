@@ -6,6 +6,7 @@ import com.ipblocklist.api.slack.config.SlackProps;
 import com.ipblocklist.api.slack.service.ChannelAccessService;
 import com.ipblocklist.api.slack.service.IpCommandService;
 import com.ipblocklist.api.slack.util.IpCommandParser;
+import com.ipblocklist.api.slack.util.SlackMessageFormatter;
 import com.slack.api.bolt.App;
 import com.slack.api.bolt.AppConfig;
 import com.slack.api.bolt.socket_mode.SocketModeApp;
@@ -70,14 +71,14 @@ public class SlackBoltRunner {
                         ipCommandService.execute(parsed, userId, teamId, channelId).subscribe(
                                 resultMessage -> {
                                     try {
-                                        // Visible audit message to the same channel
-                                        String auditMsg = String.format(
-                                                ":memo: <@%s> executed `/ip %s` in <#%s>",
-                                                userId, parsed.sub(), channelId);
+                                        // 1) Visible audit entry (includes reason when present)
+                                        String auditMsg = SlackMessageFormatter.buildAuditMessage(
+                                                userId, channelId, parsed);
                                         slackClient.chatPostMessage(r -> r.channel(channelId).text(auditMsg));
 
-                                        // Public (in_channel) response with pretty formatting
-                                        String publicMsg = prettyResultForChannel(userId, resultMessage);
+                                        // 2) Public (in_channel) response with pretty formatting + reason
+                                        String publicMsg = SlackMessageFormatter.prettyResultForChannel(
+                                                userId, resultMessage, parsed);
                                         ctx.respond(r -> r
                                                 .responseType("in_channel")
                                                 .text(publicMsg));
@@ -137,32 +138,4 @@ public class SlackBoltRunner {
         }
     }
 
-    private static String prettyResultForChannel(String userId, String raw) {
-        if (raw == null)
-            raw = "";
-        String msg = raw.trim();
-
-        String emoji = "";
-        String rest = msg;
-
-        final String OK = ":white_check_mark:";
-        final String ERR = ":x:";
-        final String WARN = ":warning:";
-
-        if (msg.startsWith(OK)) {
-            emoji = OK;
-            rest = msg.substring(OK.length()).trim();
-        } else if (msg.startsWith(ERR)) {
-            emoji = ERR;
-            rest = msg.substring(ERR.length()).trim();
-        } else if (msg.startsWith(WARN)) {
-            emoji = WARN;
-            rest = msg.substring(WARN.length()).trim();
-        } else {
-
-            emoji = OK;
-        }
-
-        return String.format("%s <@%s> %s", emoji, userId, rest);
-    }
 }

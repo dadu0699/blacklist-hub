@@ -1,5 +1,8 @@
 package com.ipblocklist.api.slack.service;
 
+import static com.ipblocklist.api.slack.util.CommandTextUtils.firstArg;
+import static com.ipblocklist.api.slack.util.CommandTextUtils.tailOrNull;
+
 import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Service;
@@ -214,11 +217,4 @@ public class IpCommandService {
                 });
     }
 
-    private static String firstArg(Parsed p) {
-        return (p.args() == null || p.args().isEmpty()) ? "" : p.args().get(0);
-    }
-
-    private static String tailOrNull(Parsed p) {
-        return (p.tail() == null || p.tail().isBlank()) ? null : p.tail();
-    }
 }

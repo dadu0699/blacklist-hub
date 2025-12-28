@@ -1,0 +1,52 @@
+{
+  "display_information": {
+    "name": "Blacklist Hub",
+    "description": "Manage Indicators of Compromise (IoC) - IPs, Hashes, Domains, and URLs",
+    "background_color": "#1a1a2e"
+  },
+  "features": {
+    "bot_user": {
+      "display_name": "Blacklist Hub",
+      "always_online": true
+    },
+    "slash_commands": [
+      {
+        "command": "/ip",
+        "description": "Manage IP addresses in the blocklist",
+        "usage_hint": "[add|deactivate|reactivate|edit|list|bulk] <IP> [reason]",
+        "should_escape": false
+      },
+      {
+        "command": "/hash",
+        "description": "Manage file hashes (SHA-256, MD5, etc.) in the blocklist",
+        "usage_hint": "[add|deactivate|reactivate|edit|list|bulk] <HASH> [reason]",
+        "should_escape": false
+      },
+      {
+        "command": "/domain",
+        "description": "Manage domains in the blocklist",
+        "usage_hint": "[add|deactivate|reactivate|edit|list|bulk] <DOMAIN> [reason]",
+        "should_escape": false
+      },
+      {
+        "command": "/url",
+        "description": "Manage URLs in the blocklist",
+        "usage_hint": "[add|deactivate|reactivate|edit|list|bulk] <URL> [reason]",
+        "should_escape": false
+      }
+    ]
+  },
+  "oauth_config": {
+    "scopes": {
+      "bot": ["commands", "users:read", "chat:write", "app_mentions:read"]
+    }
+  },
+  "settings": {
+    "interactivity": {
+      "is_enabled": true
+    },
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": true,
+    "token_rotation_enabled": false
+  }
+}

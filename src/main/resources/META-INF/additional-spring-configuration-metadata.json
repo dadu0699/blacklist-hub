@@ -1,0 +1,54 @@
+{
+  "properties": [
+    {
+      "name": "spring.logging.level.root",
+      "type": "java.lang.String",
+      "description": "Configure the root logging level (e.g., INFO, DEBUG, WARN, ERROR)."
+    },
+    {
+      "name": "spring.logging.level.org.springframework.r2dbc",
+      "type": "java.lang.String",
+      "description": "Configure the logging level for R2DBC operations."
+    },
+    {
+      "name": "spring.logging.level.com.blacklisthub",
+      "type": "java.lang.String",
+      "description": "Configure the logging level for the com.blacklisthub package."
+    },
+    {
+      "name": "spring.management.endpoints.web.exposure.include",
+      "type": "java.lang.String",
+      "description": "A comma-separated list of endpoint IDs that should be exposed over web endpoints (e.g., health, info, metrics)."
+    },
+    {
+      "name": "spring.management.endpoint.health.show-details",
+      "type": "java.lang.String",
+      "description": "When to show full health details (never, when-authorized, always)."
+    },
+    {
+      "name": "spring.management.endpoint.health.probes.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable Kubernetes liveness and readiness probes."
+    },
+    {
+      "name": "slack.app-token",
+      "type": "java.lang.String",
+      "description": "The Slack App-Level Token (xapp-) used for Socket Mode connections."
+    },
+    {
+      "name": "slack.bot-token",
+      "type": "java.lang.String",
+      "description": "The Slack Bot User OAuth Token (xoxb-) used for authenticating API requests."
+    },
+    {
+      "name": "slack.signing-secret",
+      "type": "java.lang.String",
+      "description": "The Slack Signing Secret used for verifying incoming requests from Slack."
+    },
+    {
+      "name": "app.allowed-channels",
+      "type": "java.lang.String",
+      "description": "A comma-separated list of Slack channel IDs where the bot is allowed to operate."
+    }
+  ]
+}

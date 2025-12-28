@@ -1,8 +1,8 @@
 -- V1__init.sql
--- Base schema for IP Blocklist + auditing
+-- Base schema for Blacklist hub + auditing
 
 -- NOTE: The database (schema) must exist before running Flyway.
--- Example: CREATE DATABASE ip_blocklist CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+-- Example: CREATE DATABASE blacklist_hub CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 
 -- 1) Slack users (identity source)
 CREATE TABLE IF NOT EXISTS slack_users (
@@ -59,8 +59,20 @@ CREATE INDEX idx_audit_ip_id ON ip_audit_log(ip_id);
 CREATE INDEX idx_audit_actor ON ip_audit_log(actor_user_id);
 CREATE INDEX idx_audit_created_at ON ip_audit_log(created_at);
 
--- 4) Optional view to export only active IPs (useful for local debugging)
---    *The endpoint will use the service/query, but this view helps manual inspection.
-DROP VIEW IF EXISTS v_active_ips;
-CREATE VIEW v_active_ips AS
-  SELECT ip FROM ip_addresses WHERE active = 1 ORDER BY ip;
+-- 4) Whitelist of Slack channels allowed to run /ip commands
+CREATE TABLE IF NOT EXISTS slack_channel_whitelist (
+  id            BIGINT PRIMARY KEY AUTO_INCREMENT,
+  channel_id    VARCHAR(32)  NOT NULL UNIQUE,
+  channel_name  VARCHAR(255) NULL,
+  team_id       VARCHAR(32)  NULL,
+  active        BOOLEAN      NOT NULL DEFAULT TRUE,
+  created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE INDEX idx_channel_whitelist_team ON slack_channel_whitelist(team_id);
+CREATE INDEX idx_channel_whitelist_active ON slack_channel_whitelist(active);
+
+-- Optional seed/example (remove in prod)
+-- INSERT IGNORE INTO slack_channel_whitelist (channel_id, channel_name, team_id)
+-- VALUES ('C01ABCDEF12', 'ip-admin', 'T001');

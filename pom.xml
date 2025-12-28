@@ -7,22 +7,22 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.5.7</version>
+		<version>3.5.9</version>
 		<relativePath />
 	</parent>
 
-	<groupId>com.ipblocklist</groupId>
-	<artifactId>ip-blocklist-api</artifactId>
+	<groupId>com.blacklisthub</groupId>
+	<artifactId>blacklist-hub</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>IP Blocklist API</name>
-	<description>API for publishing and maintaining a managed IP list from Slack</description>
+	<name>Blacklist Hub</name>
+	<description>API for publishing and maintaining a managed blacklist via Slack.</description>
 
 	<developers>
 		<developer />
 	</developers>
 
 	<properties>
-		<java.version>21</java.version>
+		<java.version>25</java.version>
 		<slack.sdk.version>1.46.0</slack.sdk.version>
 		<r2dbc.mysql.version>1.4.1</r2dbc.mysql.version>
 	</properties>

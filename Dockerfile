@@ -1,40 +1,52 @@
-# First stage: Build the application
-FROM maven:3.9-eclipse-temurin-21-alpine AS build
+############################
+# Build stage
+############################
+FROM maven:3.9-eclipse-temurin-25-alpine AS build
 
-# Set working directory
+WORKDIR /workspace
+
+COPY pom.xml .
+COPY .mvn .mvn
+COPY mvnw .
+
+# The executable bit is not guaranteed to survive checkout on every platform.
+RUN chmod +x mvnw
+
+# Isolated so dependency resolution is cached independently of source changes.
+RUN --mount=type=cache,target=/root/.m2 \
+    ./mvnw -B dependency:go-offline
+
+COPY src src
+
+RUN --mount=type=cache,target=/root/.m2 \
+    ./mvnw -B -DskipTests clean package \
+    && java -Djarmode=tools -jar target/*.jar extract \
+    --layers --launcher --destination target/extracted
+
+
+############################
+# Runtime stage
+# Distroless has no shell, package manager, or chown; nonroot is uid/gid 65532.
+############################
+FROM gcr.io/distroless/java25-debian13:nonroot
+
+LABEL org.opencontainers.image.title="blacklist-hub"
+LABEL org.opencontainers.image.description="Blacklist Hub Slack bot"
+LABEL org.opencontainers.image.vendor="ICG"
+
 WORKDIR /app
 
-# Copy Maven configuration files first to leverage Docker cache for dependencies
-COPY pom.xml mvnw ./
-COPY .mvn .mvn
+# Ownership is set here because the runtime image cannot chown afterwards.
+COPY --from=build --chown=65532:65532 /workspace/target/extracted/dependencies/ ./
+COPY --from=build --chown=65532:65532 /workspace/target/extracted/spring-boot-loader/ ./
+COPY --from=build --chown=65532:65532 /workspace/target/extracted/snapshot-dependencies/ ./
+COPY --from=build --chown=65532:65532 /workspace/target/extracted/application/ ./
 
-# Download dependencies (helps avoid re-downloading if they haven’t changed)
-RUN mvn -B dependency:go-offline
+USER 65532:65532
 
-# Copy the source code
-COPY src /app/src
-
-# Build the application (skip tests to speed up the process)
-RUN mvn -B clean package -DskipTests
-
-
-# Second stage: Create Image for runtime
-FROM eclipse-temurin:21-jre-alpine
-
-# Create a non-root user for security
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-
-# Set working directory
-WORKDIR /home/app
-
-# Copy the JAR file from the build stage
-COPY --from=build /app/target/ip-blocklist-api-0.0.1-SNAPSHOT.jar app.jar
-
-# Expose the port the app will run on
 EXPOSE 8080
 
-# Switch to non-root user
-USER appuser
+# Consumed directly by the JVM, which the shell-less runtime requires; overridable at deploy time.
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
 
-# Command to run the application
-ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
+ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]

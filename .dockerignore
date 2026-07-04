@@ -1,0 +1,11 @@
+# Ignore all files in the root directory
+*
+# Include the src directory
+!src/
+# Include the pom.xml file
+!pom.xml
+# Include the Maven wrapper (required by the Dockerfile build stage)
+!mvnw
+!.mvn/
+# Exclude the target directory and its contents
+target/

@@ -21,38 +21,60 @@
 src/
  └── main/java/com/blacklisthub/
       ├── BlacklistHubApplication.java  # Application entry point
-      ├── controller/                   # REST Controllers
-      ├── entity/                       # JPA Entities (IpEntity, HashEntity, DomainEntity, UrlEntity, etc.)
-      ├── repository/                   # R2DBC Repositories
-      ├── service/                      # Business Services (IpService, HashService, DomainService, UrlService)
+      ├── controller/                   # REST controllers
+      ├── entity/                       # R2DBC entities (IpEntity, HashEntity, DomainEntity, UrlEntity, IocAuditLogEntity, ...)
+      ├── repository/                   # R2DBC repositories
+      ├── service/                      # Business services
       └── slack/                        # Slack integration modules
            ├── config/                  # Slack configuration (SlackClientsConfig, SlackProps)
-           ├── service/                 # Slack command services (IpCommandService, HashCommandService, etc.)
-           ├── util/                    # Utilities (AuditHelper, CommandParser, SlackMessageFormatter, etc.)
+           ├── service/                 # Slack command services (IpCommandService, HashCommandService, ...)
+           ├── util/                    # Utilities (AuditHelper, CommandParser, SlackMessageFormatter, ...)
            └── SlackBoltRunner.java     # Main Slack Bolt runner
 ```
 
-## Environment Configuration
+## Configuration
 
-The `application.yml` file controls the base properties.  
-Make sure to include your Slack credentials and keys:
+Configuration lives in `src/main/resources/application.yaml`. **No secret is stored in the repository.** Values are provided through environment variables, with a local `.env` file supported for development via [spring-dotenv](https://github.com/paulschwarz/spring-dotenv).
 
-```yaml
-app:
-  allowed-channels: C08AXL1SYBC,C08EXAMPLECH
-slack:
-  bot-token: xoxb-xxxxxx
-  app-token: xapp-xxxxxx
-spring:
-  r2dbc:
-    url: r2dbc:mysql://localhost:3306/blacklist_hub
-    username: root
-    password: your_password
-  flyway:
-    url: jdbc:mysql://localhost:3306/blacklist_hub
-    user: root
-    password: your_password
+### Required variables
+
+| Variable | Required | Description |
+| - | - | - |
+| `SLACK_APP_TOKEN` | Yes | Socket Mode app-level token (`xapp-...`) |
+| `SLACK_BOT_TOKEN` | Yes | Bot token (`xoxb-...`) |
+| `SLACK_SIGNING_SECRET` | Yes (may be empty) | Only used by the Events API / request signature verification |
+| `APP_ALLOWED_CHANNELS` | Yes | Comma-separated Slack channel IDs allowed to invoke the bot |
+
+### Optional variables (default to a local MySQL)
+
+| Variable | Default |
+| - | - |
+| `SERVER_PORT` | `8080` |
+| `SPRING_R2DBC_URL` | `r2dbc:mysql://localhost:3306/blacklist_hub` |
+| `SPRING_R2DBC_USERNAME` | `root` |
+| `SPRING_R2DBC_PASSWORD` | `root` |
+| `SPRING_FLYWAY_URL` | `jdbc:mysql://localhost:3306/blacklist_hub` |
+| `SPRING_FLYWAY_USER` | `root` |
+| `SPRING_FLYWAY_PASSWORD` | `root` |
+
+### Local `.env`
+
+```bash
+cp .env.example .env
+# then fill in the Slack values
 ```
+
+The `.env` file is git-ignored and must never be committed. The same variable names are used both in `.env` (local) and as real environment variables (deployment).
+
+### Profiles
+
+| Profile | Behavior |
+| - | - |
+| *default* | Conservative defaults; app logs at `INFO`; actuator exposes `health, info, metrics` with details only `when_authorized`. |
+| `dev` | `com.blacklisthub` and R2DBC logging at `DEBUG`; health details `always`. |
+| `prod` | Actuator restricted to `health` only, with no details. |
+
+Activate a profile with `SPRING_PROFILES_ACTIVE` (env var) or `--spring.profiles.active=<profile>` (CLI).
 
 ## Prerequisites
 
@@ -79,11 +101,14 @@ Once created, Flyway will automatically apply all migrations on startup.
 ## Running in Development
 
 ```bash
-# 1. Build the project
-mvn clean package -DskipTests
+# 1. Provide the Slack credentials
+cp .env.example .env   # then edit .env
 
-# 2. Run with "dev" profile
-mvn spring-boot:run -Dspring-boot.run.profiles=dev
+# 2. Build the project
+./mvnw clean package -DskipTests
+
+# 3. Run with the "dev" profile
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
 You can also run the JAR directly:
@@ -92,7 +117,11 @@ You can also run the JAR directly:
 java -jar target/blacklist-hub-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev
 ```
 
+> When running the packaged JAR or a container, `.env` is only read if present in the working directory. In deployments, provide the variables as real environment variables instead.
+
 ## Running with Docker
+
+The image is a distroless, non-root runtime built from a layered Spring Boot JAR.
 
 ### Build the image
 
@@ -100,10 +129,14 @@ java -jar target/blacklist-hub-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev
 docker build -t blacklist-hub .
 ```
 
-### Manual execution (PowerShell compatible)
+### Manual execution (PowerShell)
 
 ```powershell
 docker run --name blacklist-hub -p 8081:8080 `
+  -e SLACK_APP_TOKEN=xapp-xxxx `
+  -e SLACK_BOT_TOKEN=xoxb-xxxx `
+  -e SLACK_SIGNING_SECRET= `
+  -e APP_ALLOWED_CHANNELS=C08AXL1SYBC `
   -e SPRING_R2DBC_URL=r2dbc:mysql://192.168.0.9:3306/blacklist_hub `
   -e SPRING_R2DBC_USERNAME=root `
   -e SPRING_R2DBC_PASSWORD=your_password `
@@ -129,6 +162,7 @@ services:
       - mysql_data:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: blacklist_hub
 
   api:
     build: .
@@ -136,6 +170,10 @@ services:
     depends_on:
       - db
     environment:
+      SLACK_APP_TOKEN: ${SLACK_APP_TOKEN}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN}
+      SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
+      APP_ALLOWED_CHANNELS: ${APP_ALLOWED_CHANNELS}
       SPRING_R2DBC_URL: r2dbc:mysql://db:3306/blacklist_hub
       SPRING_R2DBC_USERNAME: root
       SPRING_R2DBC_PASSWORD: root
@@ -151,6 +189,8 @@ volumes:
     driver: local
 ```
 
+> `docker compose` reads a sibling `.env` automatically, so the Slack variables above are interpolated from it. That `.env` is not baked into the image.
+
 ## Slack Usage
 
 ### Available Commands
@@ -158,7 +198,7 @@ volumes:
 #### 🌎 IP Commands
 
 | Command | Description |
-|-|-|
+| - | - |
 | `/ip add <IP> [reason]` | Adds an IP to the blocklist |
 | `/ip deactivate <IP> [reason]` | Deactivates a previously registered IP |
 | `/ip reactivate <IP> [reason]` | Reactivates a deactivated IP |
@@ -169,7 +209,7 @@ volumes:
 #### 🔑 Hash Commands
 
 | Command | Description |
-|-|-|
+| - | - |
 | `/hash add <HASH> [reason]` | Adds a HASH (SHA-256, etc.) |
 | `/hash deactivate <HASH> [reason]` | Deactivates a HASH |
 | `/hash reactivate <HASH> [reason]` | Reactivates a HASH |
@@ -180,7 +220,7 @@ volumes:
 #### 🖥️ Domain Commands
 
 | Command | Description |
-|-|-|
+| - | - |
 | `/domain add <DOMAIN> [reason]` | Adds a Domain |
 | `/domain deactivate <DOMAIN> [reason]` | Deactivates a Domain |
 | `/domain reactivate <DOMAIN> [reason]` | Reactivates a Domain |
@@ -191,7 +231,7 @@ volumes:
 #### 🔗 URL Commands
 
 | Command | Description |
-|-|-|
+| - | - |
 | `/url add <URL> [reason]` | Adds a URL |
 | `/url deactivate <URL> [reason]` | Deactivates a URL |
 | `/url reactivate <URL> [reason]` | Reactivates a URL |
@@ -210,7 +250,8 @@ Commands are also logged to the audit channel defined in the whitelist.
 
 ## Recommendations
 
-- Keep the channel whitelist (`app.allowed-channels`) updated.
+- Keep the channel whitelist (`APP_ALLOWED_CHANNELS`) updated.
 - Don't use the bot outside of controlled channels: it will ignore commands.
 - If you change the Slack token, restart the service to regenerate the Socket Mode connection.
-- Use profiles (`dev`, `prod`) to separate your environments.
+- Use the `dev` and `prod` profiles to separate your environments.
+- Never commit `.env`; rotate any credential that reaches version control.

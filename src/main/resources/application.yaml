@@ -7,9 +7,9 @@ spring:
 
   # R2DBC configuration (for runtime)
   r2dbc:
-    url: ${R2DBC_URL:r2dbc:mysql://localhost:3306/blacklist_hub}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:root}
+    url: ${SPRING_R2DBC_URL:r2dbc:mysql://localhost:3306/blacklist_hub}
+    username: ${SPRING_R2DBC_USERNAME:root}
+    password: ${SPRING_R2DBC_PASSWORD:root}
     pool:
       initial-size: 5
       max-size: 20
@@ -19,9 +19,9 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
-    url: ${FLYWAY_URL:jdbc:mysql://localhost:3306/blacklist_hub}
-    user: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:root}
+    url: ${SPRING_FLYWAY_URL:jdbc:mysql://localhost:3306/blacklist_hub}
+    user: ${SPRING_FLYWAY_USER:root}
+    password: ${SPRING_FLYWAY_PASSWORD:root}
     baseline-on-migrate: true
 
 # Logging configuration
@@ -29,7 +29,7 @@ logging:
   level:
     root: INFO
     "[org.springframework.r2dbc]": WARN
-    "[com.blacklisthub]": DEBUG
+    "[com.blacklisthub]": INFO
 
 # Actuator (health, info, metrics)
 management:

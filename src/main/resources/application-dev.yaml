@@ -1,0 +1,9 @@
+logging:
+  level:
+    "[com.blacklisthub]": DEBUG
+    "[org.springframework.r2dbc]": DEBUG
+
+management:
+  endpoint:
+    health:
+      show-details: always

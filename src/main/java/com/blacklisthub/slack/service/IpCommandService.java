@@ -133,7 +133,7 @@ public class IpCommandService {
                                         .thenReturn(":white_check_mark: Added `" + ip + "`")))
                 .onErrorResume(e -> {
                     log.error("Failed to add IP {} by {}: {}", ip, slackUserId, e.getMessage(), e);
-                    return Mono.just(":x: Error while adding `" + ip + "`: " + e.getMessage());
+                    return Mono.just(":x: Error while adding `" + ip + "`.");
                 });
     }
 
@@ -170,7 +170,7 @@ public class IpCommandService {
                         .switchIfEmpty(Mono.just(":warning: IP not found: `" + ip + "`")))
                 .onErrorResume(e -> {
                     log.error("Failed to deactivate IP {} by {}: {}", ip, slackUserId, e.getMessage(), e);
-                    return Mono.just(":x: Error while deactivating `" + ip + "`: " + e.getMessage());
+                    return Mono.just(":x: Error while deactivating `" + ip + "`.");
                 });
     }
 
@@ -207,7 +207,7 @@ public class IpCommandService {
                         .switchIfEmpty(Mono.just(":warning: IP not found: `" + ip + "`")))
                 .onErrorResume(e -> {
                     log.error("Failed to reactivate IP {} by {}: {}", ip, slackUserId, e.getMessage(), e);
-                    return Mono.just(":x: Error while reactivating `" + ip + "`: " + e.getMessage());
+                    return Mono.just(":x: Error while reactivating `" + ip + "`.");
                 });
     }
 
@@ -233,7 +233,7 @@ public class IpCommandService {
                         .switchIfEmpty(Mono.just(":warning: IP not found: `" + ip + "`")))
                 .onErrorResume(e -> {
                     log.error("Failed to edit IP {} by {}: {}", ip, slackUserId, e.getMessage(), e);
-                    return Mono.just(":x: Error while editing `" + ip + "`: " + e.getMessage());
+                    return Mono.just(":x: Error while editing `" + ip + "`.");
                 });
     }
 
@@ -247,7 +247,7 @@ public class IpCommandService {
                         : "```\n" + String.join("\n", list) + "\n```")
                 .onErrorResume(e -> {
                     log.error("Error listing IPs: {}", e.getMessage(), e);
-                    return Mono.just(":x: Error retrieving list: " + e.getMessage());
+                    return Mono.just(":x: Error retrieving list.");
                 });
     }
 
@@ -336,7 +336,7 @@ public class IpCommandService {
                                         .onErrorResume(e -> {
                                             errors.incrementAndGet();
                                             log.error("Error handling ip {} in bulk: {}", ip, e.getMessage(), e);
-                                            return Mono.just(String.format(":x: Error `%s`: %s", ip, e.getMessage()));
+                                            return Mono.just(String.format(":x: Error `%s`.", ip));
                                         });
                             }, /* concurrency */ 10)
                             .collectList()
@@ -359,7 +359,7 @@ public class IpCommandService {
                 .singleOrEmpty()
                 .onErrorResume(e -> {
                     log.error("bulkAdd failed for user {}: {}", slackUserId, e.getMessage(), e);
-                    return Mono.just(":x: Bulk operation failed: " + e.getMessage());
+                    return Mono.just(":x: Bulk operation failed.");
                 });
     }
 

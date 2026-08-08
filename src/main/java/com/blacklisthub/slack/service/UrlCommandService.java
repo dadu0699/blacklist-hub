@@ -131,7 +131,7 @@ public class UrlCommandService {
                                         .thenReturn(":white_check_mark: Added `" + url + "`")))
                 .onErrorResume(e -> {
                     log.error("Failed to add URL {} by {}: {}", url, slackUserId, e.getMessage(), e);
-                    return Mono.just(":x: Error while adding `" + url + "`: " + e.getMessage());
+                    return Mono.just(":x: Error while adding `" + url + "`.");
                 });
     }
 
@@ -163,7 +163,7 @@ public class UrlCommandService {
                         .switchIfEmpty(Mono.just(":warning: URL not found: `" + url + "`")))
                 .onErrorResume(e -> {
                     log.error("Failed to deactivate URL {} by {}: {}", url, slackUserId, e.getMessage(), e);
-                    return Mono.just(":x: Error while deactivating `" + url + "`: " + e.getMessage());
+                    return Mono.just(":x: Error while deactivating `" + url + "`.");
                 });
     }
 
@@ -195,7 +195,7 @@ public class UrlCommandService {
                         .switchIfEmpty(Mono.just(":warning: URL not found: `" + url + "`")))
                 .onErrorResume(e -> {
                     log.error("Failed to reactivate URL {} by {}: {}", url, slackUserId, e.getMessage(), e);
-                    return Mono.just(":x: Error while reactivating `" + url + "`: " + e.getMessage());
+                    return Mono.just(":x: Error while reactivating `" + url + "`.");
                 });
     }
 
@@ -219,7 +219,7 @@ public class UrlCommandService {
                         .switchIfEmpty(Mono.just(":warning: URL not found: `" + url + "`")))
                 .onErrorResume(e -> {
                     log.error("Failed to edit URL {} by {}: {}", url, slackUserId, e.getMessage(), e);
-                    return Mono.just(":x: Error while editing `" + url + "`: " + e.getMessage());
+                    return Mono.just(":x: Error while editing `" + url + "`.");
                 });
     }
 
@@ -233,7 +233,7 @@ public class UrlCommandService {
                         : "```\n" + String.join("\n", list) + "\n```")
                 .onErrorResume(e -> {
                     log.error("Error listing URLs: {}", e.getMessage(), e);
-                    return Mono.just(":x: Error retrieving list: " + e.getMessage());
+                    return Mono.just(":x: Error retrieving list.");
                 });
     }
 
@@ -319,7 +319,7 @@ public class UrlCommandService {
                                         .onErrorResume(e -> {
                                             errors.incrementAndGet();
                                             log.error("Error handling URL {} in bulk: {}", url, e.getMessage(), e);
-                                            return Mono.just(String.format(":x: Error `%s`: %s", url, e.getMessage()));
+                                            return Mono.just(String.format(":x: Error `%s`.", url));
                                         });
                             }, /* concurrency */ 10)
                             .collectList()
@@ -342,7 +342,7 @@ public class UrlCommandService {
                 .singleOrEmpty()
                 .onErrorResume(e -> {
                     log.error("bulkAdd (url) failed for user {}: {}", slackUserId, e.getMessage(), e);
-                    return Mono.just(":x: Bulk operation failed: " + e.getMessage());
+                    return Mono.just(":x: Bulk operation failed.");
                 });
     }
 

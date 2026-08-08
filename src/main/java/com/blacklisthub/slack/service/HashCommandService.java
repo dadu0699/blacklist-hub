@@ -130,7 +130,7 @@ public class HashCommandService {
                                         .thenReturn(":white_check_mark: Added `" + hash + "`")))
                 .onErrorResume(e -> {
                     log.error("Failed to add HASH {} by {}: {}", hash, slackUserId, e.getMessage(), e);
-                    return Mono.just(":x: Error while adding `" + hash + "`: " + e.getMessage());
+                    return Mono.just(":x: Error while adding `" + hash + "`.");
                 });
     }
 
@@ -165,7 +165,7 @@ public class HashCommandService {
                         .switchIfEmpty(Mono.just(":warning: HASH not found: `" + hash + "`")))
                 .onErrorResume(e -> {
                     log.error("Failed to deactivate HASH {} by {}: {}", hash, slackUserId, e.getMessage(), e);
-                    return Mono.just(":x: Error while deactivating `" + hash + "`: " + e.getMessage());
+                    return Mono.just(":x: Error while deactivating `" + hash + "`.");
                 });
     }
 
@@ -200,7 +200,7 @@ public class HashCommandService {
                         .switchIfEmpty(Mono.just(":warning: HASH not found: `" + hash + "`")))
                 .onErrorResume(e -> {
                     log.error("Failed to reactivate HASH {} by {}: {}", hash, slackUserId, e.getMessage(), e);
-                    return Mono.just(":x: Error while reactivating `" + hash + "`: " + e.getMessage());
+                    return Mono.just(":x: Error while reactivating `" + hash + "`.");
                 });
     }
 
@@ -224,7 +224,7 @@ public class HashCommandService {
                         .switchIfEmpty(Mono.just(":warning: HASH not found: `" + hash + "`")))
                 .onErrorResume(e -> {
                     log.error("Failed to edit HASH {} by {}: {}", hash, slackUserId, e.getMessage(), e);
-                    return Mono.just(":x: Error while editing `" + hash + "`: " + e.getMessage());
+                    return Mono.just(":x: Error while editing `" + hash + "`.");
                 });
     }
 
@@ -238,7 +238,7 @@ public class HashCommandService {
                         : "```\n" + String.join("\n", list) + "\n```")
                 .onErrorResume(e -> {
                     log.error("Error listing hashes: {}", e.getMessage(), e);
-                    return Mono.just(":x: Error retrieving list: " + e.getMessage());
+                    return Mono.just(":x: Error retrieving list.");
                 });
     }
 
@@ -327,7 +327,7 @@ public class HashCommandService {
                                         .onErrorResume(e -> {
                                             errors.incrementAndGet();
                                             log.error("Error handling hash {} in bulk: {}", hash, e.getMessage(), e);
-                                            return Mono.just(String.format(":x: Error `%s`: %s", hash, e.getMessage()));
+                                            return Mono.just(String.format(":x: Error `%s`.", hash));
                                         });
                             }, /* concurrency */ 10)
                             .collectList()
@@ -350,7 +350,7 @@ public class HashCommandService {
                 .singleOrEmpty()
                 .onErrorResume(e -> {
                     log.error("bulkAdd (hash) failed for user {}: {}", slackUserId, e.getMessage(), e);
-                    return Mono.just(":x: Bulk operation failed: " + e.getMessage());
+                    return Mono.just(":x: Bulk operation failed.");
                 });
     }
 }

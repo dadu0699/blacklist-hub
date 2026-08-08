@@ -70,7 +70,7 @@ public class SlackBoltRunner {
                             err -> {
                                 try {
                                     ctx.respond(r -> r.responseType("ephemeral")
-                                            .text(":x: Internal error: " + err.getMessage()));
+                                            .text(":x: Internal error. Please contact an administrator."));
                                 } catch (Exception e) {
                                     log.error("Failed to respond error to /ip", e);
                                 }
@@ -101,7 +101,7 @@ public class SlackBoltRunner {
                             err -> {
                                 try {
                                     ctx.respond(r -> r.responseType("ephemeral")
-                                            .text(":x: Internal error: " + err.getMessage()));
+                                            .text(":x: Internal error. Please contact an administrator."));
                                 } catch (Exception e) {
                                     log.error("Failed to respond error to /hash", e);
                                 }
@@ -132,7 +132,7 @@ public class SlackBoltRunner {
                             err -> {
                                 try {
                                     ctx.respond(r -> r.responseType("ephemeral")
-                                            .text(":x: Internal error: " + err.getMessage()));
+                                            .text(":x: Internal error. Please contact an administrator."));
                                 } catch (Exception e) {
                                     log.error("Failed to respond error to /domain", e);
                                 }
@@ -163,7 +163,7 @@ public class SlackBoltRunner {
                             err -> {
                                 try {
                                     ctx.respond(r -> r.responseType("ephemeral")
-                                            .text(":x: Internal error: " + err.getMessage()));
+                                            .text(":x: Internal error. Please contact an administrator."));
                                 } catch (Exception e) {
                                     log.error("Failed to respond error to /url", e);
                                 }
@@ -210,7 +210,7 @@ public class SlackBoltRunner {
                 })
                 .onErrorResume(err -> {
                     log.error("Error executing command for user {}: {}", userId, err.getMessage(), err);
-                    return Mono.just(":x: Internal error: " + err.getMessage());
+                    return Mono.just(":x: Internal error. Please contact an administrator.");
                 });
     }
 

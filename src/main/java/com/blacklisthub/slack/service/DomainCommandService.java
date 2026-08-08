@@ -127,7 +127,7 @@ public class DomainCommandService {
                                         .thenReturn(":white_check_mark: Added `" + domain + "`")))
                 .onErrorResume(e -> {
                     log.error("Failed to add DOMAIN {} by {}: {}", domain, slackUserId, e.getMessage(), e);
-                    return Mono.just(":x: Error while adding `" + domain + "`: " + e.getMessage());
+                    return Mono.just(":x: Error while adding `" + domain + "`.");
                 });
     }
 
@@ -159,7 +159,7 @@ public class DomainCommandService {
                         .switchIfEmpty(Mono.just(":warning: DOMAIN not found: `" + domain + "`")))
                 .onErrorResume(e -> {
                     log.error("Failed to deactivate DOMAIN {} by {}: {}", domain, slackUserId, e.getMessage(), e);
-                    return Mono.just(":x: Error while deactivating `" + domain + "`: " + e.getMessage());
+                    return Mono.just(":x: Error while deactivating `" + domain + "`.");
                 });
     }
 
@@ -191,7 +191,7 @@ public class DomainCommandService {
                         .switchIfEmpty(Mono.just(":warning: DOMAIN not found: `" + domain + "`")))
                 .onErrorResume(e -> {
                     log.error("Failed to reactivate DOMAIN {} by {}: {}", domain, slackUserId, e.getMessage(), e);
-                    return Mono.just(":x: Error while reactivating `" + domain + "`: " + e.getMessage());
+                    return Mono.just(":x: Error while reactivating `" + domain + "`.");
                 });
     }
 
@@ -215,7 +215,7 @@ public class DomainCommandService {
                         .switchIfEmpty(Mono.just(":warning: DOMAIN not found: `" + domain + "`")))
                 .onErrorResume(e -> {
                     log.error("Failed to edit DOMAIN {} by {}: {}", domain, slackUserId, e.getMessage(), e);
-                    return Mono.just(":x: Error while editing `" + domain + "`: " + e.getMessage());
+                    return Mono.just(":x: Error while editing `" + domain + "`.");
                 });
     }
 
@@ -229,7 +229,7 @@ public class DomainCommandService {
                         : "```\n" + String.join("\n", list) + "\n```")
                 .onErrorResume(e -> {
                     log.error("Error listing domains: {}", e.getMessage(), e);
-                    return Mono.just(":x: Error retrieving list: " + e.getMessage());
+                    return Mono.just(":x: Error retrieving list.");
                 });
     }
 
@@ -319,7 +319,7 @@ public class DomainCommandService {
                                             log.error("Error handling domain {} in bulk: {}", domain, e.getMessage(),
                                                     e);
                                             return Mono
-                                                    .just(String.format(":x: Error `%s`: %s", domain, e.getMessage()));
+                                                    .just(String.format(":x: Error `%s`.", domain));
                                         });
                             }, /* concurrency */ 10)
                             .collectList()
@@ -342,7 +342,7 @@ public class DomainCommandService {
                 .singleOrEmpty()
                 .onErrorResume(e -> {
                     log.error("bulkAdd (domain) failed for user {}: {}", slackUserId, e.getMessage(), e);
-                    return Mono.just(":x: Bulk operation failed: " + e.getMessage());
+                    return Mono.just(":x: Bulk operation failed.");
                 });
     }
 }

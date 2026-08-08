@@ -51,3 +51,6 @@ slack:
 
 app:
   allowed-channels: ${APP_ALLOWED_CHANNELS}
+  # Bearer token guarding the HTTP blocklist endpoints (/blacklist/**).
+  # Fail-closed: if empty, those endpoints reject every request with 401.
+  api-token: ${APP_API_TOKEN:}

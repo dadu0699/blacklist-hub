@@ -49,6 +49,11 @@
       "name": "app.allowed-channels",
       "type": "java.lang.String",
       "description": "A comma-separated list of Slack channel IDs where the bot is allowed to operate."
+    },
+    {
+      "name": "app.api-token",
+      "type": "java.lang.String",
+      "description": "Bearer token required to read the HTTP blocklist endpoints (/blacklist/**). If empty, those endpoints reject every request with 401 (fail-closed)."
     }
   ]
 }

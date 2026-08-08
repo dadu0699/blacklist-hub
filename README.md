@@ -44,6 +44,17 @@ Configuration lives in `src/main/resources/application.yaml`. **No secret is sto
 | `SLACK_BOT_TOKEN` | Yes | Bot token (`xoxb-...`) |
 | `SLACK_SIGNING_SECRET` | Yes (may be empty) | Only used by the Events API / request signature verification |
 | `APP_ALLOWED_CHANNELS` | Yes | Comma-separated Slack channel IDs allowed to invoke the bot |
+| `APP_API_TOKEN` | Yes | Bearer token guarding the HTTP blocklist endpoints (`/blacklist/*.txt`). **Fail-closed:** if empty, those endpoints reject every request with `401` |
+
+### HTTP blocklist endpoints
+
+The published lists (`/blacklist/ips.txt`, `/hashes.txt`, `/domains.txt`, `/urls.txt`) are protected by a static bearer token. Consumers (firewall/IDS/proxy) must send it:
+
+```bash
+curl -H "Authorization: Bearer $APP_API_TOKEN" https://<host>/blacklist/ips.txt
+```
+
+If `APP_API_TOKEN` is unset the endpoints return `401` for every request (fail-closed). The `/actuator/**` endpoints are not affected by this token.
 
 ### Optional variables (default to a local MySQL)
 

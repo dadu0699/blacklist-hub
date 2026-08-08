@@ -25,7 +25,7 @@
 		<java.version>25</java.version>
 		<slack.sdk.version>1.49.0</slack.sdk.version>
 		<r2dbc.mysql.version>1.4.2</r2dbc.mysql.version>
-		<spring-dotenv.version>4.0.0</spring-dotenv.version>
+		<spring-dotenv.version>5.1.0</spring-dotenv.version>
 	</properties>
 
 	<dependencies>

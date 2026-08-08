@@ -1,5 +1,6 @@
 package com.blacklisthub.slack.service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
@@ -7,6 +8,8 @@ import org.springframework.stereotype.Service;
 
 import com.blacklisthub.entity.SlackUserEntity;
 import com.blacklisthub.repository.SlackUserRepository;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.slack.api.methods.MethodsClient;
 import com.slack.api.methods.request.users.UsersInfoRequest;
 import com.slack.api.methods.response.users.UsersInfoResponse;
@@ -25,15 +28,29 @@ public class SlackUserService {
     private final SlackUserRepository slackUserRepository;
     private final MethodsClient slackMethods;
 
+    /**
+     * Short-lived cache of enriched users. Avoids calling Slack's rate-limited
+     * users.info (and the DB) on every command. Names change rarely, so a small
+     * staleness window is an acceptable trade-off.
+     */
+    private final Cache<String, SlackUserEntity> userCache = Caffeine.newBuilder()
+            .expireAfterWrite(Duration.ofMinutes(15))
+            .maximumSize(10_000)
+            .build();
+
     public Mono<SlackUserEntity> ensureAndEnrichSlackUser(String slackUserId, String teamId) {
+        SlackUserEntity cached = userCache.getIfPresent(slackUserId);
+        if (cached != null) {
+            return Mono.just(cached);
+        }
         return slackUserRepository.findBySlackUserId(slackUserId)
-                .switchIfEmpty(slackUserRepository.save(SlackUserEntity.builder()
+                .switchIfEmpty(Mono.defer(() -> slackUserRepository.save(SlackUserEntity.builder()
                         .slackUserId(slackUserId)
                         .teamId(teamId)
                         .displayName(slackUserId)
                         .createdAt(LocalDateTime.now())
                         .updatedAt(LocalDateTime.now())
-                        .build()))
+                        .build())))
                 .flatMap(u -> Mono
                         .fromCallable(
                                 () -> slackMethods.usersInfo(UsersInfoRequest.builder().user(slackUserId).build()))
@@ -42,7 +59,8 @@ public class SlackUserService {
                         .onErrorResume(e -> {
                             log.warn("users.info failed for {}: {}", slackUserId, e.getMessage());
                             return Mono.just(u);
-                        }));
+                        }))
+                .doOnNext(enriched -> userCache.put(slackUserId, enriched));
     }
 
     private Mono<SlackUserEntity> updateNamesIfChanged(SlackUserEntity u, UsersInfoResponse resp) {

@@ -76,6 +76,12 @@
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 
+		<!-- In-memory cache to avoid repeated Slack users.info calls -->
+		<dependency>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
+		</dependency>
+
 
 		<!-- Lombok -->
 		<dependency>

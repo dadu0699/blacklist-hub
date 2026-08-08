@@ -1,0 +1,37 @@
+# Blacklist Hub - HTTP endpoint smoke tests
+# Requires the VS Code "REST Client" extension (humao.rest-client).
+#
+# The bearer token is read from the local .env file (APP_API_TOKEN) via $dotenv,
+# so no secret is stored in this versioned file. If you have no .env, either
+# create one (see .env.example) or override @token below with a literal value.
+#
+# Adjust @host if the app runs elsewhere (the README's Docker example maps 8081:8080).
+
+@host = http://localhost:8080
+@token = {{$dotenv APP_API_TOKEN}}
+
+### 1. IPs - authorized (expect 200, text/plain body)
+GET {{host}}/blacklist/ips.txt
+Authorization: Bearer {{token}}
+
+### 2. IPs - missing Authorization header (expect 401, fail-closed)
+GET {{host}}/blacklist/ips.txt
+
+### 3. IPs - wrong token (expect 401)
+GET {{host}}/blacklist/ips.txt
+Authorization: Bearer definitely-wrong-token
+
+### 4. Hashes - authorized (expect 200)
+GET {{host}}/blacklist/hashes.txt
+Authorization: Bearer {{token}}
+
+### 5. Domains - authorized (expect 200)
+GET {{host}}/blacklist/domains.txt
+Authorization: Bearer {{token}}
+
+### 6. URLs - authorized (expect 200)
+GET {{host}}/blacklist/urls.txt
+Authorization: Bearer {{token}}
+
+### 7. Actuator health - not behind the blocklist token (expect 200)
+GET {{host}}/actuator/health

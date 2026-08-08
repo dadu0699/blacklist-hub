@@ -56,6 +56,8 @@ curl -H "Authorization: Bearer $APP_API_TOKEN" https://<host>/blacklist/ips.txt
 
 If `APP_API_TOKEN` is unset the endpoints return `401` for every request (fail-closed). The `/actuator/**` endpoints are not affected by this token.
 
+Ready-made requests for the [REST Client](https://marketplace.visualstudio.com/items?itemName=humao.rest-client) VS Code extension live in [`http/blacklist.http`](http/blacklist.http) (token read from your local `.env`).
+
 ### Optional variables (default to a local MySQL)
 
 | Variable | Default |

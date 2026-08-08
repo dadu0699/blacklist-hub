@@ -20,10 +20,12 @@ import com.blacklisthub.entity.IocType;
 import com.blacklisthub.entity.IpEntity;
 import com.blacklisthub.entity.SlackChannelWhitelistEntity;
 import com.blacklisthub.entity.SlackUserEntity;
+import com.blacklisthub.entity.UrlEntity;
 import com.blacklisthub.repository.IocAuditLogRepository;
 import com.blacklisthub.repository.IpRepository;
 import com.blacklisthub.repository.SlackChannelWhitelistRepository;
 import com.blacklisthub.repository.SlackUserRepository;
+import com.blacklisthub.repository.UrlRepository;
 
 import reactor.test.StepVerifier;
 
@@ -67,6 +69,8 @@ class RepositoryPersistenceIT {
     IocAuditLogRepository auditRepository;
     @Autowired
     SlackChannelWhitelistRepository channelWhitelistRepository;
+    @Autowired
+    UrlRepository urlRepository;
 
     private static SlackUserEntity newUser(String slackUserId, String displayName) {
         return SlackUserEntity.builder()
@@ -120,6 +124,26 @@ class RepositoryPersistenceIT {
                     assertThat(audit.getNewValue()).contains("active");
                 })
                 .verifyComplete();
+    }
+
+    @Test
+    void duplicateUrlIsRejectedByTheUniqueConstraint() {
+        StepVerifier.create(
+                slackUserRepository.save(newUser("U-url", "url creator"))
+                        .flatMap(user -> urlRepository.save(newUrl("http://dup.example.com/a", user.getId()))
+                                .then(urlRepository.save(newUrl("http://dup.example.com/a", user.getId())))))
+                .expectError()
+                .verify();
+    }
+
+    private static UrlEntity newUrl(String urlValue, Long createdBy) {
+        return UrlEntity.builder()
+                .urlValue(urlValue)
+                .reason("dup test")
+                .active(true)
+                .createdBy(createdBy)
+                .createdAt(LocalDateTime.now())
+                .build();
     }
 
     @Test

@@ -66,9 +66,39 @@ public class IocUtils {
 
     public static String jsonKV(String k, String vOrNull, boolean quote) {
         if (vOrNull == null)
-            return "\"" + k + "\":null";
+            return "\"" + escapeJson(k) + "\":null";
 
-        String safeVal = quote ? "\"" + vOrNull.replace("\"", "\\\"") + "\"" : vOrNull;
-        return "\"" + k + "\":" + safeVal;
+        String safeVal = quote ? "\"" + escapeJson(vOrNull) + "\"" : vOrNull;
+        return "\"" + escapeJson(k) + "\":" + safeVal;
+    }
+
+    /**
+     * Escapes a string for safe inclusion inside a JSON string literal: quotes,
+     * backslashes, the standard control shortcuts, and any other character below
+     * U+0020 as a {@code \\uXXXX} sequence. Prevents malformed JSON (and thus
+     * failed audit inserts) when values contain special characters.
+     */
+    private static String escapeJson(String s) {
+        StringBuilder sb = new StringBuilder(s.length() + 8);
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '"' -> sb.append("\\\"");
+                case '\\' -> sb.append("\\\\");
+                case '\n' -> sb.append("\\n");
+                case '\r' -> sb.append("\\r");
+                case '\t' -> sb.append("\\t");
+                case '\b' -> sb.append("\\b");
+                case '\f' -> sb.append("\\f");
+                default -> {
+                    if (c < 0x20) {
+                        sb.append(String.format("\\u%04x", (int) c));
+                    } else {
+                        sb.append(c);
+                    }
+                }
+            }
+        }
+        return sb.toString();
     }
 }

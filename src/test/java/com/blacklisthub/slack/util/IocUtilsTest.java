@@ -4,7 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 class IocUtilsTest {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     // --- isValidIp (T-04): lexical only, no DNS, hostnames rejected ---
 
@@ -76,5 +81,33 @@ class IocUtilsTest {
         assertThat(IocUtils.normalizeUrl("hxxps://evil[.]com")).isEqualTo("https://evil.com");
         assertThat(IocUtils.normalizeUrl("hxxp://a[.]b[.]c")).isEqualTo("http://a.b.c");
         assertThat(IocUtils.normalizeUrl(null)).isNull();
+    }
+
+    // --- jsonKV (T-07): produce valid, parseable JSON regardless of the value ---
+
+    @Test
+    void jsonKVEmitsSimpleAndNullAndUnquotedForms() {
+        assertThat(IocUtils.jsonKV("reason", "hello", true)).isEqualTo("\"reason\":\"hello\"");
+        assertThat(IocUtils.jsonKV("reason", null, true)).isEqualTo("\"reason\":null");
+        assertThat(IocUtils.jsonKV("active", "1", false)).isEqualTo("\"active\":1");
+    }
+
+    @Test
+    void jsonKVProducesValidJsonForValuesWithSpecialCharacters() throws Exception {
+        // Backslashes, quotes, newlines and tabs used to break the audit insert.
+        String tricky = "he said \"hi\"\nwith a backslash \\ path C:\\tmp and tab\tend";
+        String jsonObject = "{" + IocUtils.jsonKV("reason", tricky, true) + "}";
+
+        JsonNode node = MAPPER.readTree(jsonObject); // throws if the JSON is malformed
+        assertThat(node.get("reason").asText()).isEqualTo(tricky);
+    }
+
+    @Test
+    void jsonKVEscapesControlCharacters() throws Exception {
+        String withControl = "line1\u0001line2";
+        String jsonObject = "{" + IocUtils.jsonKV("reason", withControl, true) + "}";
+
+        JsonNode node = MAPPER.readTree(jsonObject);
+        assertThat(node.get("reason").asText()).isEqualTo(withControl);
     }
 }

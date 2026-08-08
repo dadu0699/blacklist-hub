@@ -23,8 +23,8 @@
 
 	<properties>
 		<java.version>25</java.version>
-		<slack.sdk.version>1.49.0</slack.sdk.version>
-		<r2dbc.mysql.version>1.4.2</r2dbc.mysql.version>
+		<slack.sdk.version>1.50.0</slack.sdk.version>
+		<r2dbc.mysql.version>1.4.3</r2dbc.mysql.version>
 		<spring-dotenv.version>4.0.0</spring-dotenv.version>
 	</properties>
 
@@ -148,6 +148,18 @@
 			<artifactId>mockito-core</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+		<!-- Integration tests against a real MySQL (Testcontainers) -->
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>mysql</artifactId>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -175,6 +187,18 @@
 						</exclude>
 					</excludes>
 				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
+				<executions>
+					<execution>
+						<goals>
+							<goal>integration-test</goal>
+							<goal>verify</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

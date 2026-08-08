@@ -38,7 +38,7 @@ class SchemaMappingIT {
 
     @Container
     @SuppressWarnings("resource")
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4")
+    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
             .withDatabaseName("blacklist_hub");
 
     @DynamicPropertySource

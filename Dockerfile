@@ -32,7 +32,7 @@ FROM gcr.io/distroless/java25-debian13:nonroot
 
 LABEL org.opencontainers.image.title="blacklist-hub"
 LABEL org.opencontainers.image.description="Blacklist Hub Slack bot"
-LABEL org.opencontainers.image.vendor="ICG"
+LABEL org.opencontainers.image.vendor="dd"
 
 WORKDIR /app
 
